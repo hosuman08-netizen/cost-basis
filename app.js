@@ -66,6 +66,7 @@
     try{legionTrack('activate',{pct:pct})}catch(e){}
     try{legionTrack('money_pipe_shown',{app:'costbasis'})}catch(e){}
     try{legionTrack('share_peak_shown',{pct:pct})}catch(e){}
+    renderHist();
   };
   document.getElementById('share').onclick=function(){
     var text=(lastLine||'Cost Basis calc')+' · 투자권유 아님\n'+shareUrl();
@@ -73,14 +74,31 @@
     else if(navigator.clipboard) navigator.clipboard.writeText(text);
     try{legionTrack('share_peak',{})}catch(e){}
   };
-  try{
-    var hist=JSON.parse(localStorage.getItem('cb_hist')||'[]');
-    if(hist.length){
+  function renderHist(){
+    try{
+      var hist=JSON.parse(localStorage.getItem('cb_hist')||'[]');
+      var old=document.getElementById('histShow'); if(old) old.remove();
+      if(!hist.length)return;
       var d=document.createElement('div'); d.className='card'; d.id='histShow';
-      d.innerHTML='<b>최근 계산</b><div class="sub">'+hist.slice(0,3).map(function(h){return 'PnL '+Math.round(h.pnl).toLocaleString()}).join(' · ')+'</div>';
-      root.appendChild(d);
-    }
-  }catch(e){}
+      var best=hist.reduce(function(a,h){return h.pnl>a?h.pnl:a;},-Infinity);
+      var n=+(localStorage.getItem('cb_calcs')||0);
+      d.innerHTML='<b>최근 계산</b> <span class="chip">'+n+'회</span> <span class="chip">best '+Math.round(best).toLocaleString()+'</span>'
+        +'<div class="sub" style="margin-top:6px">'+hist.slice(0,5).map(function(h,i){
+          return '<div data-hi="'+i+'" style="padding:4px 0;cursor:pointer;border-bottom:1px solid #2a2438">PnL '+Math.round(h.pnl).toLocaleString()+' · q'+h.q+' <small style="opacity:.5">탭 복원</small></div>';
+        }).join('')+'</div>';
+      root.insertBefore(d, document.getElementById('moneyPipe')||null);
+      Array.prototype.forEach.call(d.querySelectorAll('[data-hi]'),function(el){
+        el.onclick=function(){
+          var h=hist[+el.getAttribute('data-hi')]; if(!h)return;
+          document.getElementById('qty').value=h.q;
+          document.getElementById('cost').value=h.c;
+          document.getElementById('px').value=h.p;
+          document.getElementById('go').click();
+        };
+      });
+    }catch(e){}
+  }
+  renderHist();
   try{
     var q=new URLSearchParams(location.search||'');
     var ref=q.get('ref');
