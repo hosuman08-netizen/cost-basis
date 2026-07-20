@@ -89,4 +89,10 @@
     }
   }catch(e){}
   try{legionTrack('session_start',{})}catch(e){}
+  setTimeout(function(){
+    if(document.getElementById('clearHist'))return;
+    var b=document.createElement('button'); b.id='clearHist'; b.className='sec'; b.style.width='100%'; b.style.marginTop='8px';
+    b.textContent='기록 지우기'; b.onclick=function(){localStorage.removeItem('cb_hist'); location.reload();};
+    var app=document.getElementById('app'); if(app) app.appendChild(b);
+  },100);
 })();
