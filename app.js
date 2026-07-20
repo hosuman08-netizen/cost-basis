@@ -66,7 +66,10 @@
     document.getElementById('out').innerHTML='평균단가 <b>'+Math.round(avg).toLocaleString()+'</b><br>평가액 <b>'+Math.round(val).toLocaleString()+'</b><br>손익 <b style="color:'+(pnl>=0?'var(--ok)':'var(--bad)')+'">'+Math.round(pnl).toLocaleString()+' ('+pct+'%)</b>'+(lastLine&&lastLine.indexOf('직전')>=0?'<br><span class="sub">'+lastLine+'</span>':'');
     if(!lastLine||lastLine.indexOf('직전')<0) lastLine=(assetN?assetN+' ':'')+'원가 손익 '+Math.round(pnl).toLocaleString()+'원 ('+pct+'%)';
     bumpStreak(); bumpTodayCalc();
-    try{var n=+(localStorage.getItem('cb_calcs')||0)+1;localStorage.setItem('cb_calcs',n);}catch(e){}
+    try{var n=+(localStorage.getItem('cb_calcs')||0)+1;localStorage.setItem('cb_calcs',n);
+      var d=new Date(); var dk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      localStorage.setItem('cb_day_'+dk,String((+(localStorage.getItem('cb_day_'+dk)||0))+1));
+    }catch(e){}
     try{legionTrack('activate',{pct:pct})}catch(e){}
     try{legionTrack('money_pipe_shown',{app:'costbasis'})}catch(e){}
     try{legionTrack('share_peak_shown',{pct:pct})}catch(e){}
@@ -75,7 +78,7 @@
         if(ch.textContent.indexOf('오늘 계산')===0) ch.textContent='오늘 계산 '+todayCalcs();
       });
     }catch(e){}
-    renderHist();
+    renderHist(); renderCbWeek();
   };
   document.getElementById('share').onclick=function(){
     var text=(lastLine||'Cost Basis calc')+' · 투자권유 아님\n'+shareUrl();
@@ -83,6 +86,24 @@
     else if(navigator.clipboard) navigator.clipboard.writeText(text);
     try{legionTrack('share_peak',{})}catch(e){}
   };
+  function renderCbWeek(){
+    try{
+      var box=document.getElementById('cbWeekSpark');
+      if(!box){
+        box=document.createElement('div'); box.id='cbWeekSpark'; box.className='card';
+        box.innerHTML='<b>7일 계산</b><div id="cbSparkBars" style="display:flex;align-items:flex-end;gap:3px;height:32px;margin-top:8px"></div>';
+        var app=document.getElementById('app'); if(app) app.appendChild(box);
+      }
+      var bars=document.getElementById('cbSparkBars'); if(!bars)return;
+      var vals=[],max=1;
+      for(var i=6;i>=0;i--){
+        var d=new Date(); d.setDate(d.getDate()-i);
+        var k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        var n=+(localStorage.getItem('cb_day_'+k)||0); vals.push(n); if(n>max)max=n;
+      }
+      bars.innerHTML=vals.map(function(n){var h=Math.max(3,Math.round(n/max*28));return '<div style="flex:1;height:'+h+'px;background:'+(n>0?'#67e8f9':'#2a2438')+';border-radius:2px"></div>';}).join('');
+    }catch(e){}
+  }
   function renderHist(){
     try{
       var hist=JSON.parse(localStorage.getItem('cb_hist')||'[]');
@@ -107,7 +128,7 @@
       });
     }catch(e){}
   }
-  renderHist();
+  renderHist(); renderCbWeek();
   try{
     var q=new URLSearchParams(location.search||'');
     var ref=q.get('ref');
@@ -122,6 +143,11 @@
     if(document.getElementById('clearHist'))return;
     var b=document.createElement('button'); b.id='clearHist'; b.className='sec'; b.style.width='100%'; b.style.marginTop='8px';
     b.textContent='기록 지우기'; b.onclick=function(){localStorage.removeItem('cb_hist'); location.reload();};
+    var u=document.createElement('button'); u.id='undoCb'; u.className='sec'; u.style.width='100%'; u.style.marginTop='8px';
+    u.textContent='↩ 직전 계산 삭제'; u.onclick=function(){
+      try{var hist=JSON.parse(localStorage.getItem('cb_hist')||'[]'); hist.shift(); localStorage.setItem('cb_hist',JSON.stringify(hist)); renderHist(); renderCbWeek(); try{legionTrack('undo',{})}catch(e){}}catch(e){}
+    };
+    if(app) app.appendChild(u);
     var app=document.getElementById('app'); if(app) app.appendChild(b);
   },100);
 })();
