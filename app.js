@@ -37,11 +37,14 @@
     var ms=Math.max(0,end-Date.now());
     return Math.floor(ms/3600000)+'h '+Math.floor((ms%3600000)/60000)+'m';
   }
+  function todayCalcs(){try{return +(localStorage.getItem('cb_day_'+dayKey(0))||0);}catch(e){return 0;}}
+  function bumpTodayCalc(){try{localStorage.setItem('cb_day_'+dayKey(0),String(todayCalcs()+1));}catch(e){}}
   var st=JSON.parse(localStorage.getItem('cb_streak')||'{}');
   var sc=st.count||0;
   var ready=!st.shieldLast||((new Date(dayKey(0))-new Date(st.shieldLast))/86400000)>=7;
+  var tc=todayCalcs();
   root.innerHTML='<div class="card disclaimer" style="border-color:#67e8f9;color:#67e8f9;font-size:12px">투자 권유 아님. 본인 기록용 계산 · 로컬만</div>'
-    +'<div class="card"><span class="chip">🔥 '+sc+'일'+(sc>=3&&ready?' · 🛡️':'')+'</span> <span class="chip">리셋 '+fomoLeft()+'</span></div>'
+    +'<div class="card"><span class="chip">🔥 '+sc+'일'+(sc>=3&&ready?' · 🛡️':'')+'</span> <span class="chip">오늘 계산 '+tc+'</span> <span class="chip">리셋 '+fomoLeft()+'</span></div>'
     +'<div class="card"><label class="sub">자산명(선택)</label><input id="asset" type="text" placeholder="예: BTC" value="'+(localStorage.getItem('cb_asset')||'')+'"/>'+'<label class="sub">보유 수량</label><input id="qty" type="number" step="any" placeholder="예: 0.5"/>'
     +'<label class="sub">총 매수 원금(원)</label><input id="cost" type="number" placeholder="예: 25000000"/>'
     +'<label class="sub">현재가(원)</label><input id="px" type="number" placeholder="예: 95000000"/>'
@@ -62,11 +65,16 @@
     var assetN=(document.getElementById('asset')&&document.getElementById('asset').value)||'';
     document.getElementById('out').innerHTML='평균단가 <b>'+Math.round(avg).toLocaleString()+'</b><br>평가액 <b>'+Math.round(val).toLocaleString()+'</b><br>손익 <b style="color:'+(pnl>=0?'var(--ok)':'var(--bad)')+'">'+Math.round(pnl).toLocaleString()+' ('+pct+'%)</b>'+(lastLine&&lastLine.indexOf('직전')>=0?'<br><span class="sub">'+lastLine+'</span>':'');
     if(!lastLine||lastLine.indexOf('직전')<0) lastLine=(assetN?assetN+' ':'')+'원가 손익 '+Math.round(pnl).toLocaleString()+'원 ('+pct+'%)';
-    bumpStreak();
+    bumpStreak(); bumpTodayCalc();
     try{var n=+(localStorage.getItem('cb_calcs')||0)+1;localStorage.setItem('cb_calcs',n);}catch(e){}
     try{legionTrack('activate',{pct:pct})}catch(e){}
     try{legionTrack('money_pipe_shown',{app:'costbasis'})}catch(e){}
     try{legionTrack('share_peak_shown',{pct:pct})}catch(e){}
+    try{
+      Array.prototype.forEach.call(document.querySelectorAll('.chip'),function(ch){
+        if(ch.textContent.indexOf('오늘 계산')===0) ch.textContent='오늘 계산 '+todayCalcs();
+      });
+    }catch(e){}
     renderHist();
   };
   document.getElementById('share').onclick=function(){
