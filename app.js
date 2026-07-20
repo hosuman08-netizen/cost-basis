@@ -15,4 +15,12 @@
     try{legionTrack('activate',{pct:pct})}catch(e){}
   };
   try{legionTrack('session_start',{})}catch(e){}
+  try{
+    var hist=JSON.parse(localStorage.getItem('cb_hist')||'[]');
+    if(hist.length){
+      var d=document.createElement('div'); d.className='card'; d.id='histShow';
+      d.innerHTML='<b>최근 계산</b><div class="sub">'+hist.slice(0,3).map(function(h){return 'PnL '+Math.round(h.pnl).toLocaleString()}).join(' · ')+'</div>';
+      document.getElementById('app').appendChild(d);
+    }
+  }catch(e){}
 })();
