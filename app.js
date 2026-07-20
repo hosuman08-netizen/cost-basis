@@ -62,6 +62,7 @@
     document.getElementById('out').innerHTML='평균단가 <b>'+Math.round(avg).toLocaleString()+'</b><br>평가액 <b>'+Math.round(val).toLocaleString()+'</b><br>손익 <b style="color:'+(pnl>=0?'var(--ok)':'var(--bad)')+'">'+Math.round(pnl).toLocaleString()+' ('+pct+'%)</b>';
     lastLine='원가 손익 '+Math.round(pnl).toLocaleString()+'원 ('+pct+'%)';
     bumpStreak();
+    try{var n=+(localStorage.getItem('cb_calcs')||0)+1;localStorage.setItem('cb_calcs',n);}catch(e){}
     try{legionTrack('activate',{pct:pct})}catch(e){}
     try{legionTrack('money_pipe_shown',{app:'costbasis'})}catch(e){}
     try{legionTrack('share_peak_shown',{pct:pct})}catch(e){}
@@ -88,7 +89,8 @@
       try{legionTrack('k_link',{from:ref})}catch(e){}
     }
   }catch(e){}
-  try{legionTrack('session_start',{})}catch(e){}
+  try{localStorage.setItem('cb_calcs',(+(localStorage.getItem('cb_calcs')||0)));}catch(e){}
+  try{legionTrack('session_start',{calcs:+(localStorage.getItem('cb_calcs')||0)})}catch(e){}
   setTimeout(function(){
     if(document.getElementById('clearHist'))return;
     var b=document.createElement('button'); b.id='clearHist'; b.className='sec'; b.style.width='100%'; b.style.marginTop='8px';
