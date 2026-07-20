@@ -1,26 +1,92 @@
 
 (function(){
   var root=document.getElementById('app');
-  root.innerHTML='<div class="card disclaimer" style="border-color:#67e8f9;color:#67e8f9;font-size:12px">투자 권유 아님. 본인 기록용 계산.</div>'
+  var SHARE_BASE='https://hosuman08-netizen.github.io/cost-basis/';
+  function dayKey(off){
+    var d=new Date(); d.setDate(d.getDate()+(off||0));
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  function kId(){
+    try{
+      var id=localStorage.getItem('cb_k_id');
+      if(!id){id='c'+Math.random().toString(36).slice(2,8);localStorage.setItem('cb_k_id',id);}
+      return id;
+    }catch(e){return 'share';}
+  }
+  function shareUrl(){return SHARE_BASE+'?utm_source=share&utm_medium=app&ref='+encodeURIComponent(kId());}
+  function bumpStreak(){
+    try{
+      var st=JSON.parse(localStorage.getItem('cb_streak')||'{}');
+      if(!st||typeof st!=='object')st={last:null,count:0};
+      var t=dayKey(0);
+      if(st.last===t) return st;
+      var y=dayKey(-1),y2=dayKey(-2),froze=false;
+      if(st.last && st.last!==y && st.last===y2 && (st.count||0)>=3){
+        var ready=!st.shieldLast||((new Date(t)-new Date(st.shieldLast))/86400000)>=7;
+        if(ready){st.shieldLast=t;st.last=y;froze=true;try{legionTrack('streak_freeze',{count:st.count})}catch(e){}}
+      }
+      st.count=(st.last===y)?(st.count||0)+1:1;
+      st.last=t;
+      localStorage.setItem('cb_streak',JSON.stringify(st));
+      try{legionTrack('streak',{count:st.count,froze:froze})}catch(e){}
+      return st;
+    }catch(e){return {count:0};}
+  }
+  function fomoLeft(){
+    var end=new Date(); end.setHours(24,0,0,0);
+    var ms=Math.max(0,end-Date.now());
+    return Math.floor(ms/3600000)+'h '+Math.floor((ms%3600000)/60000)+'m';
+  }
+  var st=JSON.parse(localStorage.getItem('cb_streak')||'{}');
+  var sc=st.count||0;
+  var ready=!st.shieldLast||((new Date(dayKey(0))-new Date(st.shieldLast))/86400000)>=7;
+  root.innerHTML='<div class="card disclaimer" style="border-color:#67e8f9;color:#67e8f9;font-size:12px">투자 권유 아님. 본인 기록용 계산 · 로컬만</div>'
+    +'<div class="card"><span class="chip">🔥 '+sc+'일'+(sc>=3&&ready?' · 🛡️':'')+'</span> <span class="chip">리셋 '+fomoLeft()+'</span></div>'
     +'<div class="card"><label class="sub">보유 수량</label><input id="qty" type="number" step="any" placeholder="예: 0.5"/>'
     +'<label class="sub">총 매수 원금(원)</label><input id="cost" type="number" placeholder="예: 25000000"/>'
     +'<label class="sub">현재가(원)</label><input id="px" type="number" placeholder="예: 95000000"/>'
-    +'<button id="go">계산</button><div id="out"></div></div>';
+    +'<button id="go">계산</button><div id="out" class="sub" style="margin-top:10px">값을 넣고 계산하세요</div></div>'
+    +'<div class="card" id="moneyPipe" style="text-align:center;font-size:12px">'
+    +'<div style="color:#67e8f9;font-weight:700;margin-bottom:6px">💎 투명 금융 크로스</div>'
+    +'<a style="color:#ece8f1;margin:0 6px" href="https://hosuman08-netizen.github.io/budget-pulse/?utm_source=costbasis&utm_medium=pipe">💓 Budget</a>'
+    +'<a style="color:#ece8f1;margin:0 6px" href="https://hosuman08-netizen.github.io/etf-flow/?utm_source=costbasis&utm_medium=pipe">📈 ETF Flow</a>'
+    +'<a style="color:#e0b552;margin:0 6px" href="https://hosuman08-netizen.github.io/legion-hub/?utm_source=costbasis&utm_medium=pipe">🎮 Arcade</a>'
+    +'</div>'
+    +'<button id="share" style="width:100%;margin-top:8px;padding:11px;border:0;border-radius:10px;background:#1c1826;color:#ece8f1;font-weight:700">결과 공유 문구</button>';
+  var lastLine='';
   document.getElementById('go').onclick=function(){
     var q=+document.getElementById('qty').value||0,c=+document.getElementById('cost').value||0,p=+document.getElementById('px').value||0;
     if(!q){document.getElementById('out').textContent='수량 입력';return;}
     var avg=c/q, val=p*q, pnl=val-c, pct=c?Math.round(pnl/c*1000)/10:0;
     try{var hist=JSON.parse(localStorage.getItem('cb_hist')||'[]');hist.unshift({q:q,c:c,p:p,pnl:pnl,ts:Date.now()});localStorage.setItem('cb_hist',JSON.stringify(hist.slice(0,10)));}catch(e){}
     document.getElementById('out').innerHTML='평균단가 <b>'+Math.round(avg).toLocaleString()+'</b><br>평가액 <b>'+Math.round(val).toLocaleString()+'</b><br>손익 <b style="color:'+(pnl>=0?'var(--ok)':'var(--bad)')+'">'+Math.round(pnl).toLocaleString()+' ('+pct+'%)</b>';
+    lastLine='원가 손익 '+Math.round(pnl).toLocaleString()+'원 ('+pct+'%)';
+    bumpStreak();
     try{legionTrack('activate',{pct:pct})}catch(e){}
+    try{legionTrack('money_pipe_shown',{app:'costbasis'})}catch(e){}
+    try{legionTrack('share_peak_shown',{pct:pct})}catch(e){}
   };
-  try{legionTrack('session_start',{})}catch(e){}
+  document.getElementById('share').onclick=function(){
+    var text=(lastLine||'Cost Basis calc')+' · 투자권유 아님\n'+shareUrl();
+    if(navigator.share) navigator.share({text:text,url:shareUrl()}).catch(function(){});
+    else if(navigator.clipboard) navigator.clipboard.writeText(text);
+    try{legionTrack('share_peak',{})}catch(e){}
+  };
   try{
     var hist=JSON.parse(localStorage.getItem('cb_hist')||'[]');
     if(hist.length){
       var d=document.createElement('div'); d.className='card'; d.id='histShow';
       d.innerHTML='<b>최근 계산</b><div class="sub">'+hist.slice(0,3).map(function(h){return 'PnL '+Math.round(h.pnl).toLocaleString()}).join(' · ')+'</div>';
-      document.getElementById('app').appendChild(d);
+      root.appendChild(d);
     }
   }catch(e){}
+  try{
+    var q=new URLSearchParams(location.search||'');
+    var ref=q.get('ref');
+    if(ref && ref!=='share' && ref!==kId() && !localStorage.getItem('cb_k_from')){
+      localStorage.setItem('cb_k_from',ref);
+      try{legionTrack('k_link',{from:ref})}catch(e){}
+    }
+  }catch(e){}
+  try{legionTrack('session_start',{})}catch(e){}
 })();
