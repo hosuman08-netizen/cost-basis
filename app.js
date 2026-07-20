@@ -125,3 +125,5 @@
     var app=document.getElementById('app'); if(app) app.appendChild(b);
   },100);
 })();
+
+/* LEGION_WAVE_36_pipe_ensure */ /* pipe already present wave 36 */
