@@ -10,6 +10,7 @@
     var q=+document.getElementById('qty').value||0,c=+document.getElementById('cost').value||0,p=+document.getElementById('px').value||0;
     if(!q){document.getElementById('out').textContent='수량 입력';return;}
     var avg=c/q, val=p*q, pnl=val-c, pct=c?Math.round(pnl/c*1000)/10:0;
+    try{var hist=JSON.parse(localStorage.getItem('cb_hist')||'[]');hist.unshift({q:q,c:c,p:p,pnl:pnl,ts:Date.now()});localStorage.setItem('cb_hist',JSON.stringify(hist.slice(0,10)));}catch(e){}
     document.getElementById('out').innerHTML='평균단가 <b>'+Math.round(avg).toLocaleString()+'</b><br>평가액 <b>'+Math.round(val).toLocaleString()+'</b><br>손익 <b style="color:'+(pnl>=0?'var(--ok)':'var(--bad)')+'">'+Math.round(pnl).toLocaleString()+' ('+pct+'%)</b>';
     try{legionTrack('activate',{pct:pct})}catch(e){}
   };
