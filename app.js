@@ -43,8 +43,11 @@
   var sc=st.count||0;
   var ready=!st.shieldLast||((new Date(dayKey(0))-new Date(st.shieldLast))/86400000)>=7;
   var tc=todayCalcs();
+  var goal=2, gPct=Math.min(100,Math.round(tc/goal*100));
+  var ydn=+(localStorage.getItem('cb_day_'+dayKey(-1))||0);
   root.innerHTML='<div class="card disclaimer" style="border-color:#67e8f9;color:#67e8f9;font-size:12px">투자 권유 아님. 본인 기록용 계산 · 로컬만</div>'
-    +'<div class="card"><span class="chip">🔥 '+sc+'일'+(sc>=3&&ready?' · 🛡️':'')+'</span> <span class="chip">오늘 계산 '+tc+'</span> <span class="chip">리셋 '+fomoLeft()+'</span></div>'
+    +'<div class="card"><span class="chip">🔥 '+sc+'일'+(sc>=3&&ready?' · 🛡️':'')+'</span> <span class="chip">오늘 계산 '+tc+'/'+goal+'</span> <span class="chip">전일 '+(tc-ydn>=0?'+':'')+(tc-ydn)+'</span> <span class="chip">리셋 '+fomoLeft()+'</span>'
+    +'<div style="height:6px;background:#1c1826;border-radius:4px;margin-top:8px;overflow:hidden"><i id="cbGoalBar" style="display:block;height:100%;width:'+gPct+'%;background:#67e8f9"></i></div></div>'
     +'<div class="card"><label class="sub">자산명(선택)</label><input id="asset" type="text" placeholder="예: BTC" value="'+(localStorage.getItem('cb_asset')||'')+'"/>'+'<label class="sub">보유 수량</label><input id="qty" type="number" step="any" placeholder="예: 0.5"/>'
     +'<label class="sub">총 매수 원금(원)</label><input id="cost" type="number" placeholder="예: 25000000"/>'
     +'<label class="sub">현재가(원)</label><input id="px" type="number" placeholder="예: 95000000"/>'
@@ -74,9 +77,13 @@
     try{legionTrack('money_pipe_shown',{app:'costbasis'})}catch(e){}
     try{legionTrack('share_peak_shown',{pct:pct})}catch(e){}
     try{
+      var tcn=todayCalcs();
       Array.prototype.forEach.call(document.querySelectorAll('.chip'),function(ch){
-        if(ch.textContent.indexOf('오늘 계산')===0) ch.textContent='오늘 계산 '+todayCalcs();
+        if(ch.textContent.indexOf('오늘 계산')===0) ch.textContent='오늘 계산 '+tcn+'/2';
+        if(ch.textContent.indexOf('전일')===0){ var y=+(localStorage.getItem('cb_day_'+dayKey(-1))||0); ch.textContent='전일 '+(tcn-y>=0?'+':'')+(tcn-y); }
       });
+      var bar=document.getElementById('cbGoalBar'); if(bar) bar.style.width=Math.min(100,Math.round(tcn/2*100))+'%';
+      renderHist(); renderCbWeek();
     }catch(e){}
     renderHist(); renderCbWeek();
   };
@@ -111,10 +118,11 @@
       if(!hist.length)return;
       var d=document.createElement('div'); d.className='card'; d.id='histShow';
       var best=hist.reduce(function(a,h){return h.pnl>a?h.pnl:a;},-Infinity);
+      var avgP=Math.round(hist.reduce(function(a,h){return a+(+h.pnl||0);},0)/hist.length);
       var n=+(localStorage.getItem('cb_calcs')||0);
-      d.innerHTML='<b>최근 계산</b> <span class="chip">'+n+'회</span> <span class="chip">best '+Math.round(best).toLocaleString()+'</span>'
+      d.innerHTML='<b>최근 계산</b> <span class="chip">'+n+'회</span> <span class="chip">best '+Math.round(best).toLocaleString()+'</span> <span class="chip">avg '+avgP.toLocaleString()+'</span>'
         +'<div class="sub" style="margin-top:6px">'+hist.slice(0,5).map(function(h,i){
-          return '<div data-hi="'+i+'" style="padding:4px 0;cursor:pointer;border-bottom:1px solid #2a2438">PnL '+Math.round(h.pnl).toLocaleString()+' · q'+h.q+' <small style="opacity:.5">탭 복원</small></div>';
+          return '<div data-hi="'+i+'" style="padding:4px 0;cursor:pointer;border-bottom:1px solid #2a2438">'+(h.asset?h.asset+' · ':'')+'PnL '+Math.round(h.pnl).toLocaleString()+' · q'+h.q+' <small style="opacity:.5">탭 복원</small></div>';
         }).join('')+'</div>';
       root.insertBefore(d, document.getElementById('moneyPipe')||null);
       Array.prototype.forEach.call(d.querySelectorAll('[data-hi]'),function(el){
