@@ -104,8 +104,9 @@
     +'<textarea id="csvIn" rows="3" placeholder="buy,1,10000000&#10;sell,0.5,12000000"></textarea>'
     +'<div class="row" style="margin-top:6px">'
     +'<label class="sec" style="display:inline-block;padding:11px 14px;border-radius:10px;cursor:pointer;font-weight:700">파일 선택<input id="csvFile" type="file" accept=".csv,text/csv,text/plain" style="display:none"/></label>'
-    +'<button type="button" class="sec" id="csvImport">행으로 넣기</button></div>'
-    +'<div id="csvOut" class="sub" style="margin-top:6px">CSV 없음 · 허위잔고 없음 · 신고폼 아님</div></div>'
+    +'<button type="button" class="sec" id="csvImport">행으로 넣기</button>'
+    +'<button type="button" class="sec" id="csvExport">CSV보내기</button></div>'
+    +'<div id="csvOut" class="sub" style="margin-top:6px">CSV 없음 · 허위잔고 없음 · 신고폼 아님 · 손익열 없음</div></div>'
     +'<button id="go">계산</button><div id="out" class="sub" style="margin-top:10px">값을 넣고 계산하세요</div></div>'
     +'<div class="card" id="pnlSplit"><div class="row" style="justify-content:space-between;align-items:baseline"><b>실현 vs 미실현</b><span class="chip">신고용 아님</span></div>'
     +'<p class="sub">현재가 입력 → 미실현. 매도 행 없으면 실현 0. 잔고·시세 발명 없음.</p>'
@@ -296,6 +297,57 @@
     r.readAsText(csvFile.files[0]);
     csvFile.value='';
   };
+  /* WAVE118: CSV보내기 · 사용자 행만(side,qty,px) · P/L 열 없음 · 신고폼 아님 */
+  function csvCell(v){
+    var s=String(v==null?'':v);
+    if(/[",\n]/.test(s)) return '"'+s.replace(/"/g,'""')+'"';
+    return s;
+  }
+  function exportLotCsv(lots){
+    lots=Array.isArray(lots)?lots:loadLots();
+    var lines=['side,qty,px'];
+    for(var i=0;i<lots.length;i++){
+      var L=lots[i]||{};
+      var side=L.side==='sell'?'sell':'buy';
+      var q=+L.q, px=+L.px;
+      if(!(q>0) || !isFinite(q)) continue;
+      if(L.px==='' || !(px>=0) || !isFinite(px)) continue;
+      lines.push([csvCell(side),csvCell(q),csvCell(px)].join(','));
+    }
+    return lines.join('\n');
+  }
+  function lotCsvName(day){
+    return 'cb-lots-'+(day||dayKey(0))+'.csv';
+  }
+  function sendLotCsv(){
+    var lots=loadLots();
+    var csv=exportLotCsv(lots);
+    var n=csv.split(/\r?\n/).length-1;
+    if(n<0) n=0;
+    var name=lotCsvName();
+    var out=document.getElementById('csvOut');
+    try{
+      if(typeof Blob!=='undefined' && typeof document!=='undefined'){
+        var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+        var url=(typeof URL!=='undefined'&&URL.createObjectURL)?URL.createObjectURL(blob):'';
+        if(url){
+          var a=document.createElement('a');
+          a.href=url; a.download=name;
+          if(document.body) document.body.appendChild(a);
+          a.click();
+          if(a.parentNode) a.parentNode.removeChild(a);
+          setTimeout(function(){ try{ URL.revokeObjectURL(url); }catch(e){} },400);
+        }
+      }
+    }catch(e){
+      try{ if(navigator&&navigator.clipboard) navigator.clipboard.writeText(csv); }catch(e2){}
+    }
+    if(out) out.textContent='보냄 '+n+'행 · '+name+' · 사용자 행만 · 손익 발명 없음 · 신고폼 아님';
+    try{legionTrack('csv_export',{n:n})}catch(e){}
+    return csv;
+  }
+  var csvExp=document.getElementById('csvExport');
+  if(csvExp) csvExp.onclick=function(){ sendLotCsv(); };
   renderLots();
   ['qty','cost','px'].forEach(function(id){
     var el=document.getElementById(id);
