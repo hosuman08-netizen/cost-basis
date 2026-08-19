@@ -97,6 +97,15 @@
     +'<div id="lotList" class="sub" style="margin-top:8px"></div>'
     +'<div id="lotOut" class="sub" style="margin-top:6px">행 0 · 위 한 덩어리(원금÷수량)만 씁니다. 잔고 발명 없음.</div>'
     +'</div>'
+    +'<div id="csvImportBox" class="card" style="border-color:#fde68a;margin:8px 0">'
+    +'<div class="row" style="justify-content:space-between;align-items:baseline"><b>CSV 가져오기</b><span class="chip" style="background:#fde68a;color:#111;font-weight:800">신고폼 아님</span></div>'
+    +'<p class="sub" style="color:#fde68a;font-weight:700;margin:6px 0">신고폼 아님 · 세무자문 아님 · 사용자 행만 · 손익 발명 없음</p>'
+    +'<p class="sub">형식: side,qty,px · buy/sell 또는 매수/매도. 헤더 있으면 스킵. 빈칸·숫자없음=스킵(잔고 안 채움).</p>'
+    +'<textarea id="csvIn" rows="3" placeholder="buy,1,10000000&#10;sell,0.5,12000000"></textarea>'
+    +'<div class="row" style="margin-top:6px">'
+    +'<label class="sec" style="display:inline-block;padding:11px 14px;border-radius:10px;cursor:pointer;font-weight:700">파일 선택<input id="csvFile" type="file" accept=".csv,text/csv,text/plain" style="display:none"/></label>'
+    +'<button type="button" class="sec" id="csvImport">행으로 넣기</button></div>'
+    +'<div id="csvOut" class="sub" style="margin-top:6px">CSV 없음 · 허위잔고 없음 · 신고폼 아님</div></div>'
     +'<button id="go">계산</button><div id="out" class="sub" style="margin-top:10px">값을 넣고 계산하세요</div></div>'
     +'<div class="card" id="pnlSplit"><div class="row" style="justify-content:space-between;align-items:baseline"><b>실현 vs 미실현</b><span class="chip">신고용 아님</span></div>'
     +'<p class="sub">현재가 입력 → 미실현. 매도 행 없으면 실현 0. 잔고·시세 발명 없음.</p>'
@@ -232,6 +241,60 @@
     document.getElementById('lotPx').value='';
     renderLots();
     try{legionTrack('lot_add',{side:lotSide})}catch(e){}
+  };
+  /* WAVE109: CSV 임포트 · 신고폼 아님 · 사용자 행만 · 손익 발명 없음 */
+  function parseLotCsv(text){
+    var rows=[], skip=0;
+    var lines=String(text||'').replace(/^\uFEFF/,'').split(/\r?\n/);
+    for(var i=0;i<lines.length;i++){
+      var line=lines[i].trim();
+      if(!line) continue;
+      var parts=line.split(/[,;\t]/).map(function(x){return String(x||'').trim().replace(/^["']|["']$/g,'');});
+      if(parts.length<3){ skip++; continue; }
+      var a0=parts[0].toLowerCase();
+      var a1=(parts[1]||'').toLowerCase();
+      if(/^(side|type|구분|매수매도)$/.test(a0) || /^(qty|q|수량)$/.test(a1) || /^(px|price|단가|가격)$/.test((parts[2]||'').toLowerCase())) continue;
+      var side=null;
+      if(/^(buy|b|매수|long)$/i.test(parts[0])) side='buy';
+      else if(/^(sell|s|매도|short)$/i.test(parts[0])) side='sell';
+      else { skip++; continue; }
+      var q=+parts[1], px=+parts[2];
+      if(!(q>0) || !isFinite(q)){ skip++; continue; }
+      if(parts[2]==='' || !(px>=0) || !isFinite(px)){ skip++; continue; }
+      rows.push({side:side,q:q,px:px,t:Date.now()+i});
+    }
+    return {rows:rows,skip:skip};
+  }
+  function applyLotCsv(text){
+    var out=document.getElementById('csvOut');
+    var parsed=parseLotCsv(text);
+    if(!parsed.rows.length){
+      if(out) out.textContent='유효 행 0 · 스킵 '+parsed.skip+' · 잔고 발명 없음 · 신고폼 아님';
+      return;
+    }
+    var arr=loadLots();
+    parsed.rows.forEach(function(r){ arr.push(r); });
+    saveLots(arr);
+    renderLots();
+    if(out) out.textContent='넣음 '+parsed.rows.length+'행 · 스킵 '+parsed.skip+' · 사용자 데이터만 · 손익 발명 없음 · 신고폼 아님';
+    try{legionTrack('csv_import',{n:parsed.rows.length,skip:parsed.skip})}catch(e){}
+  }
+  var csvBtn=document.getElementById('csvImport');
+  if(csvBtn) csvBtn.onclick=function(){
+    var ta=document.getElementById('csvIn');
+    applyLotCsv(ta?ta.value:'');
+  };
+  var csvFile=document.getElementById('csvFile');
+  if(csvFile) csvFile.onchange=function(){
+    if(!csvFile.files||!csvFile.files[0]) return;
+    var r=new FileReader();
+    r.onload=function(){
+      var ta=document.getElementById('csvIn');
+      if(ta) ta.value=String(r.result||'');
+      applyLotCsv(String(r.result||''));
+    };
+    r.readAsText(csvFile.files[0]);
+    csvFile.value='';
   };
   renderLots();
   ['qty','cost','px'].forEach(function(id){
