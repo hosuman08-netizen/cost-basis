@@ -106,7 +106,8 @@
     +'<label class="sec" style="display:inline-block;padding:11px 14px;border-radius:10px;cursor:pointer;font-weight:700">파일 선택<input id="csvFile" type="file" accept=".csv,text/csv,text/plain" style="display:none"/></label>'
     +'<button type="button" class="sec" id="csvImport">행으로 넣기</button>'
     +'<button type="button" class="sec" id="csvExport">CSV보내기</button></div>'
-    +'<div id="csvOut" class="sub" style="margin-top:6px">CSV 없음 · 허위잔고 없음 · 신고폼 아님 · 손익열 없음</div></div>'
+    +'<div id="csvOut" class="sub" style="margin-top:6px">CSV 없음 · 허위잔고 없음 · 신고폼 아님 · 손익열 없음</div>'
+    +'<div id="csvSentN" class="sub" style="margin-top:4px"></div></div>'
     +'<button id="go">계산</button><div id="out" class="sub" style="margin-top:10px">값을 넣고 계산하세요</div></div>'
     +'<div class="card" id="pnlSplit"><div class="row" style="justify-content:space-between;align-items:baseline"><b>실현 vs 미실현</b><span class="chip">신고용 아님</span></div>'
     +'<p class="sub">현재가 입력 → 미실현. 매도 행 없으면 실현 0. 잔고·시세 발명 없음.</p>'
@@ -319,11 +320,24 @@
   function lotCsvName(day){
     return 'cb-lots-'+(day||dayKey(0))+'.csv';
   }
+  /* WAVE128: 보낸행수 1줄 · 사용자 행만 · P/L 발명 0 · 신고폼 아님 */
+  function lotCsvSentN(csv){
+    var lines=String(csv==null?'':csv).split(/\r?\n/).filter(function(x){ return String(x).length; });
+    if(!lines.length) return 0;
+    return Math.max(0, lines.length-1);
+  }
+  function lotCsvSentNLine(n){
+    return '보낸 '+(+n||0)+'행 · 사용자 행만 · 손익 발명 없음 · 신고폼 아님';
+  }
+  function paintCsvSentN(n){
+    var nEl=document.getElementById('csvSentN');
+    if(nEl) nEl.textContent=lotCsvSentNLine(n);
+    return nEl?nEl.textContent:'';
+  }
   function sendLotCsv(){
     var lots=loadLots();
     var csv=exportLotCsv(lots);
-    var n=csv.split(/\r?\n/).length-1;
-    if(n<0) n=0;
+    var n=lotCsvSentN(csv);
     var name=lotCsvName();
     var out=document.getElementById('csvOut');
     try{
@@ -343,6 +357,7 @@
       try{ if(navigator&&navigator.clipboard) navigator.clipboard.writeText(csv); }catch(e2){}
     }
     if(out) out.textContent='보냄 '+n+'행 · '+name+' · 사용자 행만 · 손익 발명 없음 · 신고폼 아님';
+    paintCsvSentN(n);
     try{legionTrack('csv_export',{n:n})}catch(e){}
     return csv;
   }
