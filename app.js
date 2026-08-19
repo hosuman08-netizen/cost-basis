@@ -108,7 +108,8 @@
     +'<button type="button" class="sec" id="csvExport">CSV보내기</button></div>'
     +'<div id="csvOut" class="sub" style="margin-top:6px">CSV 없음 · 허위잔고 없음 · 신고폼 아님 · 손익열 없음</div>'
     +'<div id="csvSentN" class="sub" style="margin-top:4px"></div>'
-    +'<div id="csvSentName" class="sub" style="margin-top:2px"></div></div>'
+    +'<div id="csvSentName" class="sub" style="margin-top:2px"></div>'
+    +'<div id="csvSentAt" class="sub" style="margin-top:2px"></div></div>'
     +'<button id="go">계산</button><div id="out" class="sub" style="margin-top:10px">값을 넣고 계산하세요</div></div>'
     +'<div class="card" id="pnlSplit"><div class="row" style="justify-content:space-between;align-items:baseline"><b>실현 vs 미실현</b><span class="chip">신고용 아님</span></div>'
     +'<p class="sub">현재가 입력 → 미실현. 매도 행 없으면 실현 0. 잔고·시세 발명 없음.</p>'
@@ -346,11 +347,28 @@
     if(el) el.textContent=lotCsvSentNameLine(name);
     return el?el.textContent:'';
   }
+  /* WAVE144: 보낸시각 1줄 · 사용자 행만 · P/L 발명 0 · 신고폼 아님 */
+  function lotCsvSentAt(ts){
+    var d=(ts==null||ts==='')?new Date():new Date(ts);
+    if(isNaN(d.getTime())) d=new Date();
+    function z(n){return String(n).padStart(2,'0');}
+    return z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds());
+  }
+  function lotCsvSentAtLine(ts){
+    if(ts==null||ts==='') return '';
+    return '보낸시각 '+lotCsvSentAt(ts)+' · 사용자 행만 · 신고폼 아님';
+  }
+  function paintCsvSentAt(ts){
+    var el=document.getElementById('csvSentAt');
+    if(el) el.textContent=lotCsvSentAtLine(ts);
+    return el?el.textContent:'';
+  }
   function sendLotCsv(){
     var lots=loadLots();
     var csv=exportLotCsv(lots);
     var n=lotCsvSentN(csv);
     var name=lotCsvName();
+    var sentAt=Date.now();
     var out=document.getElementById('csvOut');
     try{
       if(typeof Blob!=='undefined' && typeof document!=='undefined'){
@@ -371,6 +389,7 @@
     if(out) out.textContent='보냄 '+n+'행 · '+name+' · 사용자 행만 · 손익 발명 없음 · 신고폼 아님';
     paintCsvSentN(n);
     paintCsvSentName(name);
+    paintCsvSentAt(sentAt);
     try{legionTrack('csv_export',{n:n})}catch(e){}
     return csv;
   }
