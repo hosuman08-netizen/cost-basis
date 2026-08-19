@@ -469,6 +469,17 @@
     if(el.setAttribute) el.setAttribute('data-focus-after-kill','1');
     return true;
   }
+  /* WAVE203: 포커스 링 재탭=재시작 분리 · P/L 발명 0 · 신고폼 아님 */
+  function restartLotRingFromFocus(){
+    var el=typeof document!=='undefined'?document.getElementById(lotFocusId()):null;
+    if(!el||!el.getAttribute||el.getAttribute('data-focus-after-kill')!=='1') return false;
+    armLotFocusRing();
+    if(el.setAttribute){
+      el.setAttribute('data-re-ring','1');
+      el.setAttribute('data-re-from-focus','1');
+    }
+    return true;
+  }
   function focusLotAfterKill(){
     var el=typeof document!=='undefined'?document.getElementById(lotFocusId()):null;
     if(!el) return false;
@@ -498,6 +509,10 @@
     }
     if(lotFocusRingOn(el)){
       killLotFocusRing();
+      return id;
+    }
+    if(el.getAttribute&&el.getAttribute('data-focus-after-kill')==='1'){
+      restartLotRingFromFocus();
       return id;
     }
     try{el.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){try{el.scrollIntoView();}catch(e2){}}
