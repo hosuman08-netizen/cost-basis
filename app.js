@@ -365,12 +365,42 @@
   }
   /* WAVE153: 보낸시각 탭=#lotList 점프 · P/L 발명 0 · 신고폼 아님 */
   function csvSentAtJumpId(){ return 'lotList'; }
+  /* WAVE177: 점프 후 롯 플래시 · P/L 발명 0 · 신고폼 아님 */
+  var LOT_FLASH_MS=700;
+  function lotFlashMs(){ return LOT_FLASH_MS; }
+  function lotFlashId(){ return csvSentAtJumpId(); }
+  function ensureLotFlashStyle(){
+    if(typeof document==='undefined') return false;
+    if(document.getElementById('lotFlashStyle')) return true;
+    var st=document.createElement('style');
+    st.id='lotFlashStyle';
+    st.textContent='#lotList.lot-flash{animation:lotFlash .7s ease-out;outline:1px solid #67e8f9}@keyframes lotFlash{0%{box-shadow:0 0 0 2px #67e8f9;background:#0a1618}100%{box-shadow:0 0 0 0 transparent}}';
+    (document.head||document.documentElement).appendChild(st);
+    return true;
+  }
+  function flashLotAfterJump(){
+    ensureLotFlashStyle();
+    var el=typeof document!=='undefined'?document.getElementById(lotFlashId()):null;
+    if(!el) return false;
+    el.classList.remove('lot-flash');
+    void el.offsetWidth;
+    el.classList.add('lot-flash');
+    el.setAttribute('data-flash','1');
+    if(el._flashT) clearTimeout(el._flashT);
+    el._flashT=setTimeout(function(){
+      el.classList.remove('lot-flash');
+      el.setAttribute('data-flash','0');
+      el._flashT=0;
+    }, lotFlashMs());
+    return true;
+  }
   function jumpCsvSentAt(){
     var id=csvSentAtJumpId();
     var el=typeof document!=='undefined'?document.getElementById(id):null;
     if(!el) return '';
     try{el.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){try{el.scrollIntoView();}catch(e2){}}
     if(el.setAttribute) el.setAttribute('data-jump-from','csvSentAt');
+    flashLotAfterJump();
     return id;
   }
   function bindCsvSentAtJump(){
