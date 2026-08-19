@@ -447,6 +447,18 @@
     }, lotFocusRingMs());
     return true;
   }
+  /* WAVE201: 링 탭=링 끄기 · P/L 발명 0 · 신고폼 아님 */
+  function killLotFocusRing(){
+    lotRingTok++;
+    var el=typeof document!=='undefined'?document.getElementById(lotFocusId()):null;
+    if(el && el._ringT) try{clearTimeout(el._ringT);}catch(e0){}
+    clearLotFocusRing();
+    if(el && el.setAttribute){
+      el.setAttribute('data-ring-off','1');
+      el.setAttribute('data-ring-tap','1');
+    }
+    return true;
+  }
   function focusLotAfterKill(){
     var el=typeof document!=='undefined'?document.getElementById(lotFocusId()):null;
     if(!el) return false;
@@ -475,7 +487,7 @@
       return id;
     }
     if(lotFocusRingOn(el)){
-      armLotFocusRing();
+      killLotFocusRing();
       return id;
     }
     try{el.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){try{el.scrollIntoView();}catch(e2){}}
