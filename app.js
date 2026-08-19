@@ -109,7 +109,7 @@
     +'<div id="csvOut" class="sub" style="margin-top:6px">CSV 없음 · 허위잔고 없음 · 신고폼 아님 · 손익열 없음</div>'
     +'<div id="csvSentN" class="sub" style="margin-top:4px"></div>'
     +'<div id="csvSentName" class="sub" style="margin-top:2px"></div>'
-    +'<div id="csvSentAt" class="sub" style="margin-top:2px"></div></div>'
+    +'<div id="csvSentAt" class="sub" role="button" tabindex="0" style="margin-top:2px;cursor:pointer" title="탭=이동평균 행 점프 · 신고폼 아님"></div></div>'
     +'<button id="go">계산</button><div id="out" class="sub" style="margin-top:10px">값을 넣고 계산하세요</div></div>'
     +'<div class="card" id="pnlSplit"><div class="row" style="justify-content:space-between;align-items:baseline"><b>실현 vs 미실현</b><span class="chip">신고용 아님</span></div>'
     +'<p class="sub">현재가 입력 → 미실현. 매도 행 없으면 실현 0. 잔고·시세 발명 없음.</p>'
@@ -363,6 +363,31 @@
     if(el) el.textContent=lotCsvSentAtLine(ts);
     return el?el.textContent:'';
   }
+  /* WAVE153: 보낸시각 탭=#lotList 점프 · P/L 발명 0 · 신고폼 아님 */
+  function csvSentAtJumpId(){ return 'lotList'; }
+  function jumpCsvSentAt(){
+    var id=csvSentAtJumpId();
+    var el=typeof document!=='undefined'?document.getElementById(id):null;
+    if(!el) return '';
+    try{el.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){try{el.scrollIntoView();}catch(e2){}}
+    if(el.setAttribute) el.setAttribute('data-jump-from','csvSentAt');
+    return id;
+  }
+  function bindCsvSentAtJump(){
+    var el=typeof document!=='undefined'?document.getElementById('csvSentAt'):null;
+    if(!el||el._jumpBound) return false;
+    el._jumpBound=1;
+    el.setAttribute('role','button');
+    el.setAttribute('tabindex','0');
+    el.style.cursor='pointer';
+    el.title='탭=이동평균 행 점프 · 신고폼 아님';
+    el.onclick=function(){ jumpCsvSentAt(); };
+    el.onkeydown=function(ev){
+      if(!ev) return;
+      if(ev.key==='Enter'||ev.key===' '){ if(ev.preventDefault) ev.preventDefault(); jumpCsvSentAt(); }
+    };
+    return true;
+  }
   function sendLotCsv(){
     var lots=loadLots();
     var csv=exportLotCsv(lots);
@@ -390,11 +415,13 @@
     paintCsvSentN(n);
     paintCsvSentName(name);
     paintCsvSentAt(sentAt);
+    try{bindCsvSentAtJump();}catch(e3){}
     try{legionTrack('csv_export',{n:n})}catch(e){}
     return csv;
   }
   var csvExp=document.getElementById('csvExport');
   if(csvExp) csvExp.onclick=function(){ sendLotCsv(); };
+  try{bindCsvSentAtJump();}catch(eBind){}
   renderLots();
   ['qty','cost','px'].forEach(function(id){
     var el=document.getElementById(id);
