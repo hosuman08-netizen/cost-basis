@@ -408,22 +408,37 @@
   /* WAVE194: 롯 포커스 링 · P/L 발명 0 · 신고폼 아님 */
   var lotRingTok=0;
   function lotFocusRingMs(){ return 400; }
+  /* WAVE198: 링 중 재탭=링 재시작 · P/L 발명 0 · 신고폼 아님 */
+  function lotFocusRingOn(el){
+    el=el||(typeof document!=='undefined'?document.getElementById(lotFocusId()):null);
+    if(!el) return false;
+    if(el._ringT) return true;
+    if(el.getAttribute&&el.getAttribute('data-focus-ring')==='1') return true;
+    return false;
+  }
   function clearLotFocusRing(){
     var el=typeof document!=='undefined'?document.getElementById(lotFocusId()):null;
     if(!el) return;
     el.style.outline='';
     el.style.outlineOffset='';
     el.style.boxShadow='';
-    if(el.setAttribute) el.setAttribute('data-focus-ring','0');
+    if(el.setAttribute){
+      el.setAttribute('data-focus-ring','0');
+      el.setAttribute('data-re-ring','0');
+    }
     el._ringT=0;
   }
   function armLotFocusRing(){
     var el=typeof document!=='undefined'?document.getElementById(lotFocusId()):null;
     if(!el) return false;
+    var retr=lotFocusRingOn(el);
     el.style.outline='2px solid #67e8f9';
     el.style.outlineOffset='2px';
     el.style.boxShadow='0 0 0 4px #67e8f955';
-    if(el.setAttribute) el.setAttribute('data-focus-ring','1');
+    if(el.setAttribute){
+      el.setAttribute('data-focus-ring','1');
+      el.setAttribute('data-re-ring', retr?'1':'0');
+    }
     if(el._ringT) try{clearTimeout(el._ringT);}catch(e0){}
     var tok=++lotRingTok;
     el._ringT=setTimeout(function(){
@@ -457,6 +472,10 @@
     if(!el) return '';
     if(lotFlashOn(el)){
       killLotFlash();
+      return id;
+    }
+    if(lotFocusRingOn(el)){
+      armLotFocusRing();
       return id;
     }
     try{el.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){try{el.scrollIntoView();}catch(e2){}}
