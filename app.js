@@ -457,6 +457,16 @@
       el.setAttribute('data-ring-off','1');
       el.setAttribute('data-ring-tap','1');
     }
+    holdLotFocus();
+    return true;
+  }
+  /* WAVE202: 끈 뒤 롯 포커스 유지 · P/L 발명 0 · 신고폼 아님 */
+  function holdLotFocus(){
+    var el=typeof document!=='undefined'?document.getElementById(lotFocusId()):null;
+    if(!el) return false;
+    try{ if(!el.hasAttribute||!el.hasAttribute('tabindex')) el.setAttribute('tabindex','-1'); }catch(e0){}
+    try{ if(el.focus) el.focus(); }catch(e1){}
+    if(el.setAttribute) el.setAttribute('data-focus-after-kill','1');
     return true;
   }
   function focusLotAfterKill(){
