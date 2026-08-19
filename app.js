@@ -394,10 +394,32 @@
     }, lotFlashMs());
     return true;
   }
+  /* WAVE182: 플래시 중 재탭=롯플래시즉끄기 · P/L 발명 0 · 신고폼 아님 */
+  function lotFlashOn(el){
+    el=el||(typeof document!=='undefined'?document.getElementById(lotFlashId()):null);
+    if(!el) return false;
+    if(el._flashT) return true;
+    if(el.classList&&el.classList.contains('lot-flash')) return true;
+    if(el.getAttribute&&el.getAttribute('data-flash')==='1') return true;
+    return false;
+  }
+  function killLotFlash(){
+    var el=typeof document!=='undefined'?document.getElementById(lotFlashId()):null;
+    if(!el) return false;
+    if(el._flashT) try{clearTimeout(el._flashT);}catch(e0){}
+    el._flashT=0;
+    if(el.classList) el.classList.remove('lot-flash');
+    if(el.setAttribute) el.setAttribute('data-flash','0');
+    return true;
+  }
   function jumpCsvSentAt(){
     var id=csvSentAtJumpId();
     var el=typeof document!=='undefined'?document.getElementById(id):null;
     if(!el) return '';
+    if(lotFlashOn(el)){
+      killLotFlash();
+      return id;
+    }
     try{el.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){try{el.scrollIntoView();}catch(e2){}}
     if(el.setAttribute) el.setAttribute('data-jump-from','csvSentAt');
     flashLotAfterJump();
