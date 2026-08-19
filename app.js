@@ -101,6 +101,13 @@
     +'<div class="card" id="pnlSplit"><div class="row" style="justify-content:space-between;align-items:baseline"><b>실현 vs 미실현</b><span class="chip">신고용 아님</span></div>'
     +'<p class="sub">현재가 입력 → 미실현. 매도 행 없으면 실현 0. 잔고·시세 발명 없음.</p>'
     +'<div id="splitBody" class="sub">수량·원금·현재가를 넣거나 행을 추가하세요</div></div>'
+    +'<div class="card" id="jurCard"><div class="row" style="justify-content:space-between;align-items:baseline"><b>법역</b><span class="chip">세무사 아님</span></div>'
+    +'<p class="sub">교육 링크아웃 · 신고서·세금계산 없음 · 평단 숫자 불변</p>'
+    +'<div class="row" id="jurChips">'
+    +'<button type="button" class="sec mchip" data-jur="KR">KR</button>'
+    +'<button type="button" class="sec mchip" data-jur="US">US</button>'
+    +'<button type="button" class="sec mchip" data-jur="기타">기타</button></div>'
+    +'<p class="sub" id="jurNote"></p></div>'
     +'<div class="card" id="moneyPipe" style="text-align:center;font-size:12px">'
     +'<div style="color:#67e8f9;font-weight:700;margin-bottom:6px">💎 투명 금융 크로스</div>'
     +'<a style="color:#ece8f1;margin:0 6px" href="https://hosuman08-netizen.github.io/budget-pulse/?utm_source=costbasis&utm_medium=pipe">💓 Budget</a>'
@@ -111,6 +118,30 @@
   var lastLine='';
   var cbMethod='avg';
   var lotSide='buy';
+  /* GOLD50 TOP5: 법역 칩 KR/US/기타. 교육 링크만. 세무자문 아님 · 숫자 불변 */
+  var JUR_INFO={
+    KR:{txt:'KR · 가상자산 과세는 국세청·세무사 영역. 본 앱은 평단 계산기만 · 세무자문 아님.', href:'https://www.hometax.go.kr/', lab:'홈택스'},
+    US:{txt:'US · IRS virtual currency FAQ. 본 앱은 Form 생성 없음 · 세무자문 아님.', href:'https://www.irs.gov/individuals/international-taxpayers/frequently-asked-questions-on-virtual-currency-transactions', lab:'IRS FAQ'},
+    '기타':{txt:'기타 · 법역마다 규칙이 다름. 본 앱은 세무사 아님 · 신고서 생성 없음.', href:'https://www.oecd.org/tax/exchange-of-tax-information/', lab:'OECD'}
+  };
+  function jurKey(){try{return localStorage.getItem('cb_jur')||'KR';}catch(e){return 'KR';}}
+  function applyJur(j){
+    if(!JUR_INFO[j]) j='KR';
+    try{localStorage.setItem('cb_jur',j);}catch(e){}
+    Array.prototype.forEach.call(document.querySelectorAll('#jurChips [data-jur]'),function(x){
+      x.classList.toggle('on', x.getAttribute('data-jur')===j);
+    });
+    var info=JUR_INFO[j];
+    var note=document.getElementById('jurNote');
+    if(note) note.innerHTML=info.txt+' <a href="'+info.href+'" target="_blank" rel="noopener">'+info.lab+'</a>';
+  }
+  var jurBox=document.getElementById('jurChips');
+  if(jurBox) jurBox.onclick=function(ev){
+    var b=ev.target.closest('[data-jur]'); if(!b) return;
+    applyJur(b.getAttribute('data-jur'));
+    try{legionTrack('jur',{j:b.getAttribute('data-jur')})}catch(e){}
+  };
+  applyJur(jurKey());
   document.getElementById('cbMethod').onclick=function(ev){
     var b=ev.target.closest('[data-m]'); if(!b) return;
     cbMethod=b.getAttribute('data-m');
