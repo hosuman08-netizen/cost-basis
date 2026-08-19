@@ -403,6 +403,16 @@
     if(el.getAttribute&&el.getAttribute('data-flash')==='1') return true;
     return false;
   }
+  /* WAVE190: 끈 뒤 롯 포커스 · P/L 발명 0 · 신고폼 아님 */
+  function lotFocusId(){ return lotFlashId(); }
+  function focusLotAfterKill(){
+    var el=typeof document!=='undefined'?document.getElementById(lotFocusId()):null;
+    if(!el) return false;
+    try{ if(!el.hasAttribute||!el.hasAttribute('tabindex')) el.setAttribute('tabindex','-1'); }catch(e0){}
+    try{ if(el.focus) el.focus(); }catch(e1){}
+    if(el.setAttribute) el.setAttribute('data-focus-after-kill','1');
+    return true;
+  }
   function killLotFlash(){
     var el=typeof document!=='undefined'?document.getElementById(lotFlashId()):null;
     if(!el) return false;
@@ -410,6 +420,7 @@
     el._flashT=0;
     if(el.classList) el.classList.remove('lot-flash');
     if(el.setAttribute) el.setAttribute('data-flash','0');
+    focusLotAfterKill();
     return true;
   }
   function jumpCsvSentAt(){
