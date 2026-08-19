@@ -75,6 +75,7 @@
   var goal=2, gPct=Math.min(100,Math.round(tc/goal*100));
   var ydn=+(localStorage.getItem('cb_day_'+dayKey(-1))||0);
   root.innerHTML='<div class="card disclaimer" style="border-color:#67e8f9;color:#67e8f9;font-size:12px">투자 권유 아님. 본인 기록용 계산 · 로컬만</div>'
+    +'<div class="card" id="srcStamp" style="font-size:12px;color:#fde68a">사용자 입력 · 시세 API 없음 · 신고용 아님 · 세무자문 아님</div>'
     +'<div class="card"><span class="chip">🔥 '+sc+'일'+(sc>=3&&ready?' · 🛡️':'')+'</span> <span class="chip">오늘 계산 '+tc+'/'+goal+'</span> <span class="chip">전일 '+(tc-ydn>=0?'+':'')+(tc-ydn)+'</span> <span class="chip">리셋 '+fomoLeft()+'</span>'
     +'<div style="height:6px;background:#1c1826;border-radius:4px;margin-top:8px;overflow:hidden"><i id="cbGoalBar" style="display:block;height:100%;width:'+gPct+'%;background:#67e8f9"></i></div></div>'
     +'<div class="card"><label class="sub">자산명(선택)</label><input id="asset" type="text" placeholder="예: BTC" value="'+(localStorage.getItem('cb_asset')||'')+'"/>'+'<label class="sub">보유 수량</label><input id="qty" type="number" step="any" placeholder="예: 0.5"/>'
@@ -97,6 +98,9 @@
     +'<div id="lotOut" class="sub" style="margin-top:6px">행 0 · 위 한 덩어리(원금÷수량)만 씁니다. 잔고 발명 없음.</div>'
     +'</div>'
     +'<button id="go">계산</button><div id="out" class="sub" style="margin-top:10px">값을 넣고 계산하세요</div></div>'
+    +'<div class="card" id="pnlSplit"><div class="row" style="justify-content:space-between;align-items:baseline"><b>실현 vs 미실현</b><span class="chip">신고용 아님</span></div>'
+    +'<p class="sub">현재가 입력 → 미실현. 매도 행 없으면 실현 0. 잔고·시세 발명 없음.</p>'
+    +'<div id="splitBody" class="sub">수량·원금·현재가를 넣거나 행을 추가하세요</div></div>'
     +'<div class="card" id="moneyPipe" style="text-align:center;font-size:12px">'
     +'<div style="color:#67e8f9;font-weight:700;margin-bottom:6px">💎 투명 금융 크로스</div>'
     +'<a style="color:#ece8f1;margin:0 6px" href="https://hosuman08-netizen.github.io/budget-pulse/?utm_source=costbasis&utm_medium=pipe">💓 Budget</a>'
@@ -116,7 +120,35 @@
       if(cbMethod==='avg') note.innerHTML='KR 이동평균법(교육) · 평단 = (기존원금 + 신규원금) ÷ (기존수량 + 신규수량)<br>매도원가 = 당시 평단 × 매도수량 · 세무자문 아님 · 신고서 아님 · 시세API 없음';
       else note.textContent='한 덩어리 입력 = FIFO/LIFO/HIFO 숫자 같음. 롯 장부 아님 · 교육용 근사 · 세무자문 아님';
     }
+    renderSplit();
   };
+  function renderSplit(){
+    var body=document.getElementById('splitBody');
+    if(!body) return;
+    var lots=loadLots();
+    var ma=lots.length?movingAvgLots(lots):null;
+    var qEl=document.getElementById('qty');
+    var cEl=document.getElementById('cost');
+    var pEl=document.getElementById('px');
+    var q=qEl?(+qEl.value||0):0;
+    var c=cEl?(+cEl.value||0):0;
+    var pRaw=pEl?pEl.value:'';
+    var p=(pRaw===''||pRaw==null)?null:+pRaw;
+    if(p!=null && !isFinite(p)) p=null;
+    var usedLots=cbMethod==='avg' && lots.length && ma;
+    if(usedLots){ q=ma.qty; c=ma.cost; }
+    var hasSell=lots.some(function(L){return L.side==='sell';});
+    var real=hasSell&&ma?ma.realized:0;
+    var avg=q?c/q:0;
+    var unreal=(p==null||!q)?null:(p-avg)*q;
+    var realLine=hasSell
+      ?('실현 <b>'+Math.round(real).toLocaleString()+'</b>원 · 입력가 기준 · 신고용 아님')
+      :'실현 <b>0</b>원 · 매도 행 없음';
+    var unLine=unreal==null
+      ?(q?'미실현 미확인 · 현재가 없음 · 시세 API 없음':'미실현 미확인 · 수량 없음 · 허위잔고 없음')
+      :('미실현 <b style="color:'+(unreal>=0?'var(--ok)':'var(--bad)')+'">'+Math.round(unreal).toLocaleString()+'</b>원 · 평가손익');
+    body.innerHTML=unLine+'<br>'+realLine+'<br><span class="sub">사용자 입력 · 시세 API 없음 · 세무자문 아님</span>';
+  }
   function renderLots(){
     var lots=loadLots();
     var list=document.getElementById('lotList');
@@ -125,6 +157,7 @@
     if(!lots.length){
       list.innerHTML='행 없음 — 빈 장부. 허위잔고 없음.';
       out.textContent='행 0 · 위 한 덩어리(원금÷수량)만 씁니다. 잔고 발명 없음.';
+      renderSplit();
       return;
     }
     var ma=movingAvgLots(lots);
@@ -143,6 +176,7 @@
       +(ma.realized?'<br>실현(입력가 기준) '+Math.round(ma.realized).toLocaleString()+'원 · 신고용 아님':'')
       +(ma.skipped?'<br>스킵 '+ma.skipped+'행 (매도>잔량 등)':'')
       +'<br><span class="sub">세무자문 아님 · 넣은 행만 계산</span>';
+    renderSplit();
   }
   document.getElementById('lotSideBuy').onclick=function(){
     lotSide='buy';
@@ -169,8 +203,16 @@
     try{legionTrack('lot_add',{side:lotSide})}catch(e){}
   };
   renderLots();
+  ['qty','cost','px'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.addEventListener('input', renderSplit);
+  });
+  renderSplit();
   document.getElementById('go').onclick=function(){
-    var q=+document.getElementById('qty').value||0,c=+document.getElementById('cost').value||0,p=+document.getElementById('px').value||0;
+    var q=+document.getElementById('qty').value||0,c=+document.getElementById('cost').value||0;
+    var pRaw=document.getElementById('px').value;
+    var hasPx=pRaw!=='' && isFinite(+pRaw);
+    var p=hasPx?(+pRaw):0;
     var lots=loadLots();
     var usedLots=cbMethod==='avg' && lots.length;
     var ma=usedLots?movingAvgLots(lots):null;
@@ -179,19 +221,23 @@
       if(document.getElementById('qty')) document.getElementById('qty').value=q;
       if(document.getElementById('cost')) document.getElementById('cost').value=Math.round(c);
     }
-    if(!q){document.getElementById('out').textContent=usedLots?'잔량 0 — 허위잔고 없음':'수량 입력';return;}
-    var avg=c/q, val=p*q, pnl=val-c, pct=c?Math.round(pnl/c*1000)/10:0;
-    try{var asset=(document.getElementById('asset')&&document.getElementById('asset').value)||''; localStorage.setItem('cb_asset',asset); var hist=JSON.parse(localStorage.getItem('cb_hist')||'[]'); var prev=hist[0]; hist.unshift({q:q,c:c,p:p,pnl:pnl,asset:asset,ts:Date.now()}); localStorage.setItem('cb_hist',JSON.stringify(hist.slice(0,12))); if(prev){ var dlt=pnl-prev.pnl; lastLine=(asset?asset+' ':'')+'원가 손익 '+Math.round(pnl).toLocaleString()+'원 ('+pct+'%) · 직전대비 '+(dlt>=0?'+':'')+Math.round(dlt).toLocaleString(); } }catch(e){}
+    if(!q){document.getElementById('out').textContent=usedLots?'잔량 0 — 허위잔고 없음':'수량 입력'; renderSplit(); return;}
+    var avg=c/q, val=hasPx?p*q:null, pnl=hasPx?val-c:null, pct=(hasPx&&c)?Math.round(pnl/c*1000)/10:null;
+    try{var asset=(document.getElementById('asset')&&document.getElementById('asset').value)||''; localStorage.setItem('cb_asset',asset); if(hasPx){ var hist=JSON.parse(localStorage.getItem('cb_hist')||'[]'); var prev=hist[0]; hist.unshift({q:q,c:c,p:p,pnl:pnl,asset:asset,ts:Date.now()}); localStorage.setItem('cb_hist',JSON.stringify(hist.slice(0,12))); if(prev&&prev.pnl!=null){ var dlt=pnl-prev.pnl; lastLine=(asset?asset+' ':'')+'미실현 '+Math.round(pnl).toLocaleString()+'원 ('+pct+'%) · 직전대비 '+(dlt>=0?'+':'')+Math.round(dlt).toLocaleString(); } } }catch(e){}
     var assetN=(document.getElementById('asset')&&document.getElementById('asset').value)||'';
     var methodLine=usedLots
       ? 'KR 이동평균법 · 행 '+lots.length+'개 · 평단=(원금÷수량) · 세무자문 아님'
       : (cbMethod==='avg'?'KR 이동평균법 · 한 덩어리 평단=원금÷수량 · 세무자문 아님':'메서드 '+cbMethod.toUpperCase()+' · 한 덩어리라 FIFO/LIFO/HIFO=평균. 롯 아님 · 교육용 근사');
-    document.getElementById('out').innerHTML='평균단가 <b>'+Math.round(avg).toLocaleString()+'</b><br>평가액 <b>'+Math.round(val).toLocaleString()+'</b><br>손익 <b style="color:'+(pnl>=0?'var(--ok)':'var(--bad)')+'">'+Math.round(pnl).toLocaleString()+' ('+pct+'%)</b>'
-      +(usedLots&&ma.realized?'<br><span class="sub">실현(입력가 기준) '+Math.round(ma.realized).toLocaleString()+'원 · 신고용 아님</span>':'')
+    var hasSell=lots.some(function(L){return L.side==='sell';});
+    var realN=hasSell&&ma?ma.realized:0;
+    document.getElementById('out').innerHTML='평균단가 <b>'+Math.round(avg).toLocaleString()+'</b>'
+      +(hasPx?'<br>평가액 <b>'+Math.round(val).toLocaleString()+'</b><br>미실현 <b style="color:'+(pnl>=0?'var(--ok)':'var(--bad)')+'">'+Math.round(pnl).toLocaleString()+' ('+pct+'%)</b>':'<br>미실현 미확인 · 현재가 없음 · 시세 API 없음')
+      +'<br><span class="sub">실현 '+(hasSell?Math.round(realN).toLocaleString()+'원 · 입력가 기준':'0원 · 매도 행 없음')+' · 신고용 아님</span>'
       +(lastLine&&lastLine.indexOf('직전')>=0?'<br><span class="sub">'+lastLine+'</span>':'')
       +'<br><span class="sub">'+methodLine+'</span>'
       +'<br><span class="sub">평단=손익분기 · +10% 목표 <b>'+Math.round(avg*1.1).toLocaleString()+'</b> · -10% <b>'+Math.round(avg*0.9).toLocaleString()+'</b></span>';
-    if(!lastLine||lastLine.indexOf('직전')<0) lastLine=(assetN?assetN+' ':'')+'원가 손익 '+Math.round(pnl).toLocaleString()+'원 ('+pct+'%)';
+    renderSplit();
+    if(hasPx && (!lastLine||lastLine.indexOf('직전')<0)) lastLine=(assetN?assetN+' ':'')+'미실현 '+Math.round(pnl).toLocaleString()+'원 ('+pct+'%)';
     bumpStreak(); bumpTodayCalc();
     try{var n=+(localStorage.getItem('cb_calcs')||0)+1;localStorage.setItem('cb_calcs',n);
       var d=new Date(); var dk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
