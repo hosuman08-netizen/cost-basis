@@ -405,12 +405,40 @@
   }
   /* WAVE190: 끈 뒤 롯 포커스 · P/L 발명 0 · 신고폼 아님 */
   function lotFocusId(){ return lotFlashId(); }
+  /* WAVE194: 롯 포커스 링 · P/L 발명 0 · 신고폼 아님 */
+  var lotRingTok=0;
+  function lotFocusRingMs(){ return 400; }
+  function clearLotFocusRing(){
+    var el=typeof document!=='undefined'?document.getElementById(lotFocusId()):null;
+    if(!el) return;
+    el.style.outline='';
+    el.style.outlineOffset='';
+    el.style.boxShadow='';
+    if(el.setAttribute) el.setAttribute('data-focus-ring','0');
+    el._ringT=0;
+  }
+  function armLotFocusRing(){
+    var el=typeof document!=='undefined'?document.getElementById(lotFocusId()):null;
+    if(!el) return false;
+    el.style.outline='2px solid #67e8f9';
+    el.style.outlineOffset='2px';
+    el.style.boxShadow='0 0 0 4px #67e8f955';
+    if(el.setAttribute) el.setAttribute('data-focus-ring','1');
+    if(el._ringT) try{clearTimeout(el._ringT);}catch(e0){}
+    var tok=++lotRingTok;
+    el._ringT=setTimeout(function(){
+      if(tok!==lotRingTok) return;
+      clearLotFocusRing();
+    }, lotFocusRingMs());
+    return true;
+  }
   function focusLotAfterKill(){
     var el=typeof document!=='undefined'?document.getElementById(lotFocusId()):null;
     if(!el) return false;
     try{ if(!el.hasAttribute||!el.hasAttribute('tabindex')) el.setAttribute('tabindex','-1'); }catch(e0){}
     try{ if(el.focus) el.focus(); }catch(e1){}
     if(el.setAttribute) el.setAttribute('data-focus-after-kill','1');
+    armLotFocusRing();
     return true;
   }
   function killLotFlash(){
