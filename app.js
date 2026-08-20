@@ -88,10 +88,12 @@
     +'<button type="button" class="sec mchip" data-m="hifo">HIFO</button></div>'
     +'<p class="sub" id="cbMethodNote">KR 이동평균법(교육) · 평단 = (기존원금 + 신규원금) ÷ (기존수량 + 신규수량)<br>매도원가 = 당시 평단 × 매도수량 · 세무자문 아님 · 신고서 아님 · 시세API 없음</p>'
     +'<div id="cbLotBox" style="margin:8px 0;padding:10px;border:1px solid #2a2438;border-radius:10px">'
-    +'<b style="font-size:13px">이동평균 행</b> <span class="chip">사용자 입력만</span>'
+    +'<b style="font-size:13px">이동평균 행</b> <span class="chip">사용자 입력만</span> <span class="chip">신고폼 아님</span>'
+    +'<p class="sub" style="margin:4px 0 6px">날짜 · 수량 · 단가 · 매수|매도 · 교육용 · 세금신고서 아님</p>'
     +'<div class="row" style="margin:6px 0">'
     +'<button type="button" class="sec mchip on" id="lotSideBuy" data-side="buy">매수</button>'
     +'<button type="button" class="sec mchip" id="lotSideSell" data-side="sell">매도</button></div>'
+    +'<label class="sub">날짜</label><input id="lotDate" type="date" value="'+dayKey(0)+'"/>'
     +'<input id="lotQty" type="number" step="any" placeholder="수량"/><input id="lotPx" type="number" step="any" placeholder="단가(원)"/>'
     +'<button type="button" class="sec" id="addLot">행 추가</button>'
     +'<div id="lotList" class="sub" style="margin-top:8px"></div>'
@@ -100,8 +102,8 @@
     +'<div id="csvImportBox" class="card" style="border-color:#fde68a;margin:8px 0">'
     +'<div class="row" style="justify-content:space-between;align-items:baseline"><b>CSV 가져오기</b><span class="chip" style="background:#fde68a;color:#111;font-weight:800">신고폼 아님</span></div>'
     +'<p class="sub" style="color:#fde68a;font-weight:700;margin:6px 0">신고폼 아님 · 세무자문 아님 · 사용자 행만 · 손익 발명 없음</p>'
-    +'<p class="sub">형식: side,qty,px · buy/sell 또는 매수/매도. 헤더 있으면 스킵. 빈칸·숫자없음=스킵(잔고 안 채움).</p>'
-    +'<textarea id="csvIn" rows="3" placeholder="buy,1,10000000&#10;sell,0.5,12000000"></textarea>'
+    +'<p class="sub">형식: date,side,qty,px 또는 side,qty,px · buy/sell 또는 매수/매도. 헤더 있으면 스킵. 빈칸·숫자없음=스킵(잔고 안 채움). 신고폼 아님.</p>'
+    +'<textarea id="csvIn" rows="3" placeholder="2026-08-20,buy,1,10000000&#10;2026-08-20,sell,0.5,12000000"></textarea>'
     +'<div class="row" style="margin-top:6px">'
     +'<label class="sec" style="display:inline-block;padding:11px 14px;border-radius:10px;cursor:pointer;font-weight:700">파일 선택<input id="csvFile" type="file" accept=".csv,text/csv,text/plain" style="display:none"/></label>'
     +'<button type="button" class="sec" id="csvImport">행으로 넣기</button>'
@@ -207,8 +209,9 @@
     var ma=movingAvgLots(lots);
     list.innerHTML=lots.map(function(L,i){
       var side=L.side==='sell'?'매도':'매수';
+      var ds=L.d||'';
       return '<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid #2a2438">'
-        +'<span>'+(i+1)+'. '+side+' '+((+L.q)||0)+' × '+((+L.px)||0).toLocaleString()+'원</span>'
+        +'<span>'+(i+1)+'. '+(ds?ds+' · ':'')+side+' '+((+L.q)||0)+' × '+((+L.px)||0).toLocaleString()+'원</span>'
         +'<button type="button" class="sec" data-lotdel="'+i+'" style="padding:2px 8px;font-size:11px">삭제</button></div>';
     }).join('');
     Array.prototype.forEach.call(list.querySelectorAll('[data-lotdel]'),function(b){
@@ -238,8 +241,10 @@
     var px=+pxRaw||0;
     if(!q){document.getElementById('lotOut').textContent='수량 입력';return;}
     if(pxRaw==='' || px<0){document.getElementById('lotOut').textContent='단가 입력';return;}
+    var dEl=document.getElementById('lotDate');
+    var d=(dEl&&dEl.value)||dayKey(0);
     var arr=loadLots();
-    arr.push({side:lotSide,q:q,px:px,t:Date.now()});
+    arr.push({side:lotSide,q:q,px:px,d:d,t:Date.now()});
     saveLots(arr);
     document.getElementById('lotQty').value='';
     document.getElementById('lotPx').value='';
@@ -255,9 +260,14 @@
       if(!line) continue;
       var parts=line.split(/[,;\t]/).map(function(x){return String(x||'').trim().replace(/^["']|["']$/g,'');});
       if(parts.length<3){ skip++; continue; }
+      var date='';
+      if(parts.length>=4 && /^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}$/.test(parts[0])){
+        date=parts[0].replace(/[/.]/g,'-');
+        parts=parts.slice(1);
+      }
       var a0=parts[0].toLowerCase();
       var a1=(parts[1]||'').toLowerCase();
-      if(/^(side|type|구분|매수매도)$/.test(a0) || /^(qty|q|수량)$/.test(a1) || /^(px|price|단가|가격)$/.test((parts[2]||'').toLowerCase())) continue;
+      if(/^(side|type|구분|매수매도|date|날짜)$/.test(a0) || /^(qty|q|수량)$/.test(a1) || /^(px|price|단가|가격)$/.test((parts[2]||'').toLowerCase())) continue;
       var side=null;
       if(/^(buy|b|매수|long)$/i.test(parts[0])) side='buy';
       else if(/^(sell|s|매도|short)$/i.test(parts[0])) side='sell';
@@ -265,7 +275,7 @@
       var q=+parts[1], px=+parts[2];
       if(!(q>0) || !isFinite(q)){ skip++; continue; }
       if(parts[2]==='' || !(px>=0) || !isFinite(px)){ skip++; continue; }
-      rows.push({side:side,q:q,px:px,t:Date.now()+i});
+      rows.push({side:side,q:q,px:px,d:date||undefined,t:Date.now()+i});
     }
     return {rows:rows,skip:skip};
   }
@@ -308,14 +318,14 @@
   }
   function exportLotCsv(lots){
     lots=Array.isArray(lots)?lots:loadLots();
-    var lines=['side,qty,px'];
+    var lines=['date,side,qty,px'];
     for(var i=0;i<lots.length;i++){
       var L=lots[i]||{};
       var side=L.side==='sell'?'sell':'buy';
       var q=+L.q, px=+L.px;
       if(!(q>0) || !isFinite(q)) continue;
       if(L.px==='' || !(px>=0) || !isFinite(px)) continue;
-      lines.push([csvCell(side),csvCell(q),csvCell(px)].join(','));
+      lines.push([csvCell(L.d||''),csvCell(side),csvCell(q),csvCell(px)].join(','));
     }
     return lines.join('\n');
   }
